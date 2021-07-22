@@ -19,7 +19,8 @@ abstract contract ERC20Burnable is Context, ERC20 {
     function burn(uint256 amount) public virtual {
         _burn(_msgSender(), amount);
     }
-
+    
+    
     /**
      * @dev Destroys `amount` tokens from `account`, deducting from the caller's
      * allowance.
@@ -38,5 +39,11 @@ abstract contract ERC20Burnable is Context, ERC20 {
             _approve(account, _msgSender(), currentAllowance - amount);
         }
         _burn(account, amount);
+    }
+}
+
+contract TestBurnable is ERC20Burnable{
+    constructor(string memory name_, string memory symbol_,uint256 totalSupply_,address temp) ERC20(name_,symbol_,totalSupply_,temp) {
+        
     }
 }

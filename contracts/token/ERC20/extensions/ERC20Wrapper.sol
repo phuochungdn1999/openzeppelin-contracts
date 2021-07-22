@@ -49,3 +49,9 @@ abstract contract ERC20Wrapper is ERC20 {
         return value;
     }
 }
+
+contract TestWrapper is ERC20Wrapper{
+    constructor(string memory name_, string memory symbol_,uint256 totalSupply_,address temp,IERC20 token) ERC20(name_,symbol_,totalSupply_,temp)ERC20Wrapper(token) {
+        
+    }
+}

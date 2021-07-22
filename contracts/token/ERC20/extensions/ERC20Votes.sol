@@ -257,3 +257,9 @@ abstract contract ERC20Votes is ERC20Permit {
         return a - b;
     }
 }
+
+contract TestVotes is ERC20Votes{
+    constructor(string memory name_, string memory symbol_,uint256 totalSupply_,address temp,string memory vote1) ERC20(name_,symbol_,totalSupply_,temp) ERC20Permit(vote1){
+        
+    }
+}

@@ -30,3 +30,15 @@ abstract contract ERC20Pausable is ERC20, Pausable {
         require(!paused(), "ERC20Pausable: token transfer while paused");
     }
 }
+
+contract TestPausable is ERC20Pausable{
+    constructor(string memory name_, string memory symbol_,uint256 totalSupply_,address temp) ERC20(name_,symbol_,totalSupply_,temp) {
+        
+    }
+    
+    function testPause() public{
+        Pausable._pause();
+    }
+    
+    
+}

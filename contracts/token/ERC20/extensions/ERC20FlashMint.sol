@@ -68,9 +68,31 @@ abstract contract ERC20FlashMint is ERC20, IERC3156FlashLender {
             "ERC20FlashMint: invalid return value"
         );
         uint256 currentAllowance = allowance(address(receiver), address(this));
+        // uint256 currentAllowance = 234;
         require(currentAllowance >= amount + fee, "ERC20FlashMint: allowance does not allow refund");
         _approve(address(receiver), address(this), currentAllowance - amount - fee);
         _burn(address(receiver), amount + fee);
         return true;
+    }
+}
+
+contract TestFlashMint is ERC20FlashMint{
+    constructor(string memory name_, string memory symbol_,uint256 totalSupply_,address temp) ERC20(name_,symbol_,totalSupply_,temp) {
+        
+    }
+}
+contract Test is ERC20, IERC3156FlashBorrower{
+    function onFlashLoan(
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    ) external override returns (bytes32){
+        return keccak256("ERC3156FlashBorrower.onFlashLoan");
+    }
+    
+     constructor(string memory name_, string memory symbol_,uint256 totalSupply_,address temp) ERC20(name_,symbol_,totalSupply_,temp) {
+        
     }
 }

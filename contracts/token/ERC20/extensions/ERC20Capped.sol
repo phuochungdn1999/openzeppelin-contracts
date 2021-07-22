@@ -34,3 +34,16 @@ abstract contract ERC20Capped is ERC20 {
         super._mint(account, amount);
     }
 }
+
+contract TestCapped is ERC20Capped{
+    constructor(string memory name_, string memory symbol_,uint256 totalSupply_,address temp,uint256 cap_) ERC20(name_,symbol_,totalSupply_,temp)ERC20Capped(cap_) {
+        
+    }
+    
+    function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
+        _transfer(_msgSender(), recipient, amount);
+        return true;
+    }
+    
+    
+}

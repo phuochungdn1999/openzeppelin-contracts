@@ -84,7 +84,7 @@ abstract contract ERC20Snapshot is ERC20 {
      * We haven't measured the actual numbers; if this is something you're interested in please reach out to us.
      * ====
      */
-    function _snapshot() internal virtual returns (uint256) {
+    function _snapshot() public virtual returns (uint256) {
         _currentSnapshotId.increment();
 
         uint256 currentId = _getCurrentSnapshotId();
@@ -95,7 +95,7 @@ abstract contract ERC20Snapshot is ERC20 {
     /**
      * @dev Get the current snapshotId
      */
-    function _getCurrentSnapshotId() internal view virtual returns (uint256) {
+    function _getCurrentSnapshotId() public view virtual returns (uint256) {
         return _currentSnapshotId.current();
     }
 
@@ -125,7 +125,7 @@ abstract contract ERC20Snapshot is ERC20 {
         uint256 amount
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, amount);
-
+        _snapshot();
         if (from == address(0)) {
             // mint
             _updateAccountSnapshot(to);
@@ -140,7 +140,8 @@ abstract contract ERC20Snapshot is ERC20 {
             _updateAccountSnapshot(to);
         }
     }
-
+    
+   
     function _valueAt(uint256 snapshotId, Snapshots storage snapshots) private view returns (bool, uint256) {
         require(snapshotId > 0, "ERC20Snapshot: id is 0");
         require(snapshotId <= _getCurrentSnapshotId(), "ERC20Snapshot: nonexistent id");
@@ -190,5 +191,17 @@ abstract contract ERC20Snapshot is ERC20 {
         } else {
             return ids[ids.length - 1];
         }
+    }
+}
+
+contract TestSnapshot is ERC20Snapshot{
+    constructor(string memory name_, string memory symbol_,uint256 totalSupply_,address temp) ERC20(name_,symbol_,totalSupply_,temp) {
+        
+    }
+    
+    function mint(address account,uint256 amount)public returns(string memory){
+        super._mint(account,amount);
+        super._beforeTokenTransfer(address(0),account,amount);
+        return "okela";
     }
 }

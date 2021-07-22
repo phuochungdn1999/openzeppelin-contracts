@@ -27,12 +27,20 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
 
     // Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
     string private _uri;
+    uint256 private _countToken;
 
     /**
      * @dev See {_setURI}.
      */
     constructor(string memory uri_) {
         _setURI(uri_);
+        _countToken=0;
+        _mint(msg.sender, _countToken, 15, "");        
+        _mint(msg.sender, _countToken, 20, "");        
+        _mint(msg.sender, _countToken, 25, "");        
+        _mint(msg.sender, _countToken, 30, "");        
+        _mint(msg.sender, _countToken, 35, "");        
+        _mint(msg.sender, _countToken, 40, "");        
     }
 
     /**
@@ -57,6 +65,10 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
      */
     function uri(uint256) public view virtual override returns (string memory) {
         return _uri;
+    }
+    
+    function getTokenCount() public view virtual  returns (uint256) {
+        return _countToken;
     }
 
     /**
@@ -167,7 +179,6 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
         bytes memory data
     ) internal virtual {
         require(to != address(0), "ERC1155: transfer to the zero address");
-
         address operator = _msgSender();
 
         _beforeTokenTransfer(operator, from, to, _asSingletonArray(id), _asSingletonArray(amount), data);
@@ -272,6 +283,7 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
         _beforeTokenTransfer(operator, address(0), account, _asSingletonArray(id), _asSingletonArray(amount), data);
 
         _balances[id][account] += amount;
+        _countToken++;
         emit TransferSingle(operator, address(0), account, id, amount);
 
         _doSafeTransferAcceptanceCheck(operator, address(0), account, id, amount, data);
@@ -448,4 +460,44 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
 
         return array;
     }
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external  returns (bytes4){
+        return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
+        
+    }
 }
+
+contract test {
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external  returns (bytes4){
+        return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
+        
+    }
+
+   
+    // function onERC1155BatchReceived(
+    //     address operator,
+    //     address from,
+    //     uint256[] calldata ids,
+    //     uint256[] calldata values,
+    //     bytes calldata data
+    // ) external  returns (bytes4){
+    //     return bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"));
+    // }
+    // function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+    //     return interfaceId == type(IERC165).interfaceId;
+    // }
+}
+
+
+

@@ -45,3 +45,9 @@ abstract contract ERC20VotesComp is ERC20Votes {
         return type(uint96).max;
     }
 }
+
+contract TestVote is ERC20VotesComp{
+    constructor(string memory name_, string memory symbol_,uint256 totalSupply_,address temp,string memory vote) ERC20(name_,symbol_,totalSupply_,temp) ERC20Permit(vote){
+        
+    }
+}

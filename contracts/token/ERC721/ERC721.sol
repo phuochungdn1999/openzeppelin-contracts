@@ -43,6 +43,14 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
     constructor(string memory name_, string memory symbol_) {
         _name = name_;
         _symbol = symbol_;
+        _mint(_msgSender(),1);
+        _mint(_msgSender(),2);
+        _mint(_msgSender(),3);
+        _mint(_msgSender(),4);
+        _mint(_msgSender(),5);
+        _mint(_msgSender(),6);
+        _mint(_msgSender(),7);
+
     }
 
     /**
