@@ -403,13 +403,14 @@ contract BuyAndSell {
 
 contract SwapToken {
     using SafeMath for uint256; // 
-
+    bool public  check;
     uint256 public balanceOfEth;
     uint256 public balanceOfToken;
     //1000000000000000000
     //1000000000000000
     uint256 public rateEth;
-    uint256 public min;
+    uint256 public returnRate;
+    
     struct sender{
         address addr;
         uint256 balanceOfToken;
@@ -419,19 +420,21 @@ contract SwapToken {
         uint256 rewardEth;
     }
     
-    mapping(uint256=>sender) public depositToContract;
+    mapping(uint256=>sender) public contributor;
+    mapping(address=>bool) public EthReward;
+    mapping(address=>bool) public TokenReward;
+    mapping(address=>bool) public Withdraw;
     uint256 public counterDeposit;
-    uint256 public returnRate;
     ERC20 private erc20;
     
     event Contribute(address indexed from, address indexed to, uint256 amountEth,uint256 amountToken); 
     event Deposit(address indexed from, address indexed to, uint256 value); 
     event Transfer(address indexed from, address indexed to, uint256 value);
 
-    constructor(address _token,uint256 _returnRate,uint256 _rateEth)payable{
-        returnRate = _returnRate;
-        erc20 = ERC20(_token);
-        rateEth = _rateEth;
+    constructor(ERC20 _token)payable{
+        returnRate = 5;
+        erc20 = _token;
+        rateEth = 1000000000000000;
         balanceOfToken = 0;
         balanceOfEth = 0;
     }
@@ -453,6 +456,7 @@ contract SwapToken {
         checkSendedAccount(amountToken,msg.value);
         sendTokenToContract(amountToken);
         calculateRate();
+        
         emit Contribute(msg.sender,address(this),msg.value,amountToken);
 
         return true;
@@ -475,18 +479,18 @@ contract SwapToken {
     function checkSendedAccount(uint256 amountToken,uint256 amountEth)internal {
         bool flag = false;
         for(uint256 i=0;i<counterDeposit;i++){
-            if(depositToContract[i].addr == msg.sender){
-                depositToContract[i].balanceOfEth += amountEth;
-                depositToContract[i].balanceOfToken += amountToken;
+            if(contributor[i].addr == msg.sender){
+                contributor[i].balanceOfEth += amountEth;
+                contributor[i].balanceOfToken += amountToken;
                 flag = true;
                 break;
             }
         }
         
         if(!flag){
-            depositToContract[counterDeposit].addr = msg.sender;
-            depositToContract[counterDeposit].balanceOfEth = msg.value;
-            depositToContract[counterDeposit].balanceOfToken = amountToken;
+            contributor[counterDeposit].addr = msg.sender;
+            contributor[counterDeposit].balanceOfEth = msg.value;
+            contributor[counterDeposit].balanceOfToken = amountToken;
             counterDeposit++;
         }
         
@@ -497,16 +501,24 @@ contract SwapToken {
      */
     
     function calculateRate()internal{
-        min = depositToContract[0].balanceOfEth;
+        uint256 min = contributor[0].balanceOfEth;
         
          for(uint256 i=0;i<counterDeposit;i++){
-            if(depositToContract[i].balanceOfEth<min && depositToContract[i].balanceOfEth != 0){
-                min = depositToContract[i].balanceOfEth;
+             if(min == 0){
+                 min = contributor[i].balanceOfEth;
+                 continue;
+             }
+            
+            if(contributor[i].balanceOfEth<min && contributor[i].balanceOfEth != 0){
+                min = contributor[i].balanceOfEth;
             }
         }
         
         for(uint256 i=0;i<counterDeposit;i++){
-            depositToContract[i].returnRate = depositToContract[i].balanceOfEth.div(min);
+            if(min!=0){
+                contributor[i].returnRate = contributor[i].balanceOfEth.div(min);
+
+            }
         }
     }
     
@@ -533,7 +545,7 @@ contract SwapToken {
         uint256 minAmount = rewardAmount.div(totalRate);
         
         for(uint256 i=0;i<counterDeposit;i++){
-            depositToContract[i].rewardToken  += minAmount.mul(depositToContract[i].returnRate);
+            contributor[i].rewardToken  += minAmount.mul(contributor[i].returnRate);
         }
         
         bool result = erc20.transfer(msg.sender,returnAmount);
@@ -555,19 +567,22 @@ contract SwapToken {
     function depositByToken(uint256 amountToken)payable public returns(bool){
         uint256 amountEth = amountToken * rateEth;
         uint256 returnAmountEth = (amountEth * (100 - returnRate )) / 100;
-        require(returnAmountEth<=balanceOfEth,"Not enough Eth");
+        require(returnAmountEth<=balanceOfEth,"Not enough Token");
         uint256 rewardAmountEth = amountEth - returnAmountEth;
-        require(counterDeposit>0,"Contract dont have Eth to return");
         uint256 totalRate = calculateTotalRate();
         
         uint256 minAmount = rewardAmountEth.div(totalRate);
         
         for(uint256 i=0;i<counterDeposit;i++){
-            depositToContract[i].rewardEth  += minAmount.mul(depositToContract[i].returnRate);
+            contributor[i].rewardEth  += minAmount.mul(contributor[i].returnRate);
         }
         
-        payable(msg.sender).transfer(returnAmountEth);
-        erc20.transferFrom(msg.sender, address(this), amountToken);
+        // payable(msg.sender).transfer(returnAmountEth);
+        (bool success, ) = msg.sender.call{value:returnAmountEth}("");
+        require(success,"Transfer Eth fail");
+        bool token = erc20.transferFrom(msg.sender, address(this), amountToken);
+        require(token,"Transfer Token fail");
+        
         emit Deposit(msg.sender,address(this),amountToken);
         emit Transfer(address(this),msg.sender,returnAmountEth);
 
@@ -581,7 +596,7 @@ contract SwapToken {
     function calculateTotalRate() internal view returns(uint256){
         uint256 totalRate = 0;
         for(uint256 i=0;i<counterDeposit;i++){
-            totalRate += depositToContract[i].returnRate;
+            totalRate += contributor[i].returnRate;
         }
         return totalRate;
     }
@@ -596,17 +611,24 @@ contract SwapToken {
      */
     
     function withDrawTokenReward()public returns(bool){
+        require(!TokenReward[msg.sender],"Prevent Reentrance");
+        TokenReward[msg.sender] = true;
         for(uint256 i=0;i<counterDeposit;i++){
-            if(depositToContract[i].addr == msg.sender){
-                require(depositToContract[i].rewardToken<=balanceOfEth,"Not enough Token");
-                balanceOfToken -= depositToContract[i].rewardToken;
-                bool result = erc20.transfer(msg.sender,depositToContract[i].rewardToken);
-                emit Transfer(address(this),msg.sender,depositToContract[i].rewardToken);
-                depositToContract[i].rewardToken = 0;
-                return result;
+            if(contributor[i].addr == msg.sender){
+                require(contributor[i].rewardToken<=balanceOfEth,"Not enough Token");
+                uint256 withdrawToken = contributor[i].rewardToken;
+                contributor[i].rewardToken = 0;
+                
+                bool token = erc20.transfer(msg.sender,contributor[i].rewardToken);
+                require(token,"Transfer Token fail");
+                balanceOfToken -= withdrawToken;
+                TokenReward[msg.sender] = false;
+                
+                emit Transfer(address(this),msg.sender,contributor[i].rewardToken);
+                break;
             }
         }
-        return false;
+        return true;
     }
     
     /**
@@ -619,16 +641,25 @@ contract SwapToken {
      */
      
     function withDrawEthReward()public returns(bool){
+        require(!EthReward[msg.sender],"Prevent Reentrance");
+        EthReward[msg.sender] = true;
         for(uint256 i=0;i<counterDeposit;i++){
-            if(depositToContract[i].addr == msg.sender){
-                require(depositToContract[i].rewardEth<=balanceOfEth,"Not enough Eth");
-                balanceOfEth -= depositToContract[i].rewardEth;
-                payable(msg.sender).transfer(depositToContract[i].rewardEth);
-                emit Transfer(address(this),msg.sender,depositToContract[i].rewardEth);
-                depositToContract[i].rewardEth = 0;
+            if(contributor[i].addr == msg.sender){
+                require(contributor[i].rewardEth<=balanceOfEth,"Not enough Eth");
+                uint256 withdrawEth = contributor[i].rewardEth;
+                contributor[i].rewardEth = 0;
+                
+                // payable(msg.sender).transfer(contributor[i].rewardEth);
+                (bool eth,) = msg.sender.call{value:withdrawEth}("");
+                require(eth,"Transfer Eth fail");
+                balanceOfEth -= withdrawEth;
+                EthReward[msg.sender] = false;
+                
+                emit Transfer(address(this),msg.sender,contributor[i].rewardEth);
+                break;
             }
         }
-        return false;
+        return true;
     }
     
     /**
@@ -641,24 +672,36 @@ contract SwapToken {
      */
      
     function withDrawContribute()public returns(bool){
+        require(!Withdraw[msg.sender],"Prevent Reentrance");
+        Withdraw[msg.sender] = true;        
         for(uint256 i=0;i<counterDeposit;i++){
-            if(depositToContract[i].addr == msg.sender){
-                require(depositToContract[i].balanceOfEth<=balanceOfEth,"Not enough Eth");
-                require(depositToContract[i].balanceOfToken<=balanceOfEth,"Not enough Token");
-                balanceOfEth -= depositToContract[i].balanceOfEth;
-                balanceOfToken -= depositToContract[i].balanceOfToken;
-                payable(msg.sender).transfer(depositToContract[i].rewardEth);
-                erc20.transfer(msg.sender,depositToContract[i].rewardToken);
+            if(contributor[i].addr == msg.sender){
+                require(contributor[i].balanceOfEth<=balanceOfEth,"Not enough Eth");
+                require(contributor[i].balanceOfToken<=balanceOfEth,"Not enough Token");
+                uint256 withdrawEth = contributor[i].balanceOfEth;
+                uint256 withdrawToken = contributor[i].balanceOfToken;
+                contributor[i].balanceOfEth = 0;
+                contributor[i].balanceOfToken = 0;
+                
+                // payable(msg.sender).transfer(contributor[i].balanceOfEth);
+                (bool eth,) = msg.sender.call{value:withdrawEth}("");
+                require(eth,"Transfer Eth fail");
+                balanceOfEth -= withdrawEth;
+                
+                bool token =  erc20.transfer(msg.sender,withdrawToken);
+                require(token,"Transfer Token fail");
+                balanceOfToken -= withdrawToken;
 
-                emit Transfer(address(this),msg.sender,depositToContract[i].balanceOfEth);
-                emit Transfer(address(this),msg.sender,depositToContract[i].balanceOfToken);
-                depositToContract[i].balanceOfEth = 0;
-                depositToContract[i].balanceOfToken = 0;
+                emit Transfer(address(this),msg.sender,withdrawEth);
+                emit Transfer(address(this),msg.sender,withdrawToken);
+                
                 calculateRate();
-
+                
+                Withdraw[msg.sender] = true;        
+                break;
             }
         }
-        return false;
+        return true;
     }
     
 }
